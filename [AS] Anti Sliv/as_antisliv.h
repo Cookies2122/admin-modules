@@ -2,7 +2,6 @@
 #define _INCLUDE_AS_ANTISLIV_H_
 
 #include <ISmmPlugin.h>
-#include <sh_vector.h>
 #include <stdio.h>
 #include <iserver.h>
 #include <entity2/entitysystem.h>
@@ -11,10 +10,12 @@
 #include <deque>
 #include <functional>
 #include <utlstring.h>
-#include <KeyValues.h>
+#include <keyvalues.h>
 #include "CCSPlayerController.h"
 #include <ctime>
 #include "include/menus.h"
+#include "include/utils.h"
+#include "include/players.h"
 #include "include/admin.h"
 
 class as_antisliv final : public ISmmPlugin, public IMetamodListener

@@ -16,13 +16,11 @@ CGlobalVars* gpGlobals = nullptr;
 
 PLUGIN_EXPOSE(as_antisliv, g_as_antisliv);
 
-// Конфигурация
 int g_iRoundRefresh = 2;
 int g_iMaxMutes = 5;
 int g_iMaxBans = 3;
 std::string g_szFlagsImmunity = "z";
 
-// Статистика администраторов
 struct AdminStats {
     int iBans;
     int iMutes;
@@ -30,11 +28,6 @@ struct AdminStats {
 };
 
 AdminStats g_AdminStats[64];
-
-CGameEntitySystem* GameEntitySystem()
-{
-    return g_pUtils ? g_pUtils->GetCGameEntitySystem() : nullptr;
-}
 
 void StartupServer()
 {
@@ -94,16 +87,13 @@ void BanAdmin(int iAdminSlot, const char* szReason)
     
     const char* szAdminName = g_pAdminApi->GetAdminName(iAdminSlot);
     
-    // Permanent ban через Admin System
     g_pAdminApi->AddOfflinePlayerPunishment(szSteamID, szAdminName, RT_BAN, 0, szReason, -1);
     
-    // Логируем
     g_pUtils->LogToFile("antisliv.log", "[AntiSliv] Admin %s (SteamID: %s) banned | Reason: %s | Bans: %d/%d | Mutes: %d/%d", 
         szAdminName, szSteamID, szReason,
         g_AdminStats[iAdminSlot].iBans, g_iMaxBans,
         g_AdminStats[iAdminSlot].iMutes, g_iMaxMutes);
     
-    // Уведомляем админов
     for (int i = 0; i < 64; i++)
     {
         if (!g_pAdminApi->IsAdmin(i)) continue;
@@ -112,7 +102,6 @@ void BanAdmin(int iAdminSlot, const char* szReason)
         g_pUtils->PrintToChat(i, " \x02[AntiSliv]\x01 Admin \x07%s\x01 banned: \x10%s", szAdminName, szReason);
     }
     
-    // Кикаем
     engine->DisconnectClient(CPlayerSlot(iAdminSlot), NETWORK_DISCONNECT_KICKED);
 }
 
@@ -206,6 +195,7 @@ bool as_antisliv::Load(PluginId id, ISmmAPI *ismm, char *error, size_t maxlen, b
     PLUGIN_SAVEVARS();
     
     GET_V_IFACE_CURRENT(GetEngineFactory, g_pCVar, ICvar, CVAR_INTERFACE_VERSION);
+    GET_V_IFACE_ANY(GetEngineFactory, g_pGameResourceServiceServer, IGameResourceService, GAMERESOURCESERVICESERVER_INTERFACE_VERSION);
     GET_V_IFACE_ANY(GetEngineFactory, g_pSchemaSystem, ISchemaSystem, SCHEMASYSTEM_INTERFACE_VERSION);
     GET_V_IFACE_CURRENT(GetEngineFactory, engine, IVEngineServer2, SOURCE2ENGINETOSERVER_INTERFACE_VERSION);
     GET_V_IFACE_CURRENT(GetFileSystemFactory, g_pFullFileSystem, IFileSystem, FILESYSTEM_INTERFACE_VERSION);
@@ -226,6 +216,8 @@ bool as_antisliv::Load(PluginId id, ISmmAPI *ismm, char *error, size_t maxlen, b
 
 bool as_antisliv::Unload(char *error, size_t maxlen)
 {
+    int ret;
+    if (!g_SMAPI->MetaFactory(UTILS_INTERFACE, &ret, nullptr)) g_pUtils = nullptr;
     if (g_pUtils)
         g_pUtils->ClearAllHooks(g_PLID);
     ConVar_Unregister();
@@ -236,7 +228,7 @@ void as_antisliv::AllPluginsLoaded()
 {
     int ret;
     
-    g_pUtils = (IUtilsApi*)g_SMAPI->MetaFactory(Utils_INTERFACE, &ret, nullptr);
+    g_pUtils = (IUtilsApi*)g_SMAPI->MetaFactory(UTILS_INTERFACE, &ret, nullptr);
     if (ret == META_IFACE_FAILED)
     {
         ConColorMsg(Color(255, 0, 0, 255), "[%s] Missing Utils system plugin\n", GetLogTag());
@@ -262,7 +254,6 @@ void as_antisliv::AllPluginsLoaded()
     
     LoadConfig();
     
-    // Хуки
     g_pAdminApi->OnPlayerPunish(g_PLID, OnPlayerPunish);
     g_pAdminApi->OnOfflinePlayerPunish(g_PLID, OnOfflinePlayerPunish);
     g_pAdminApi->OnAdminConnected(g_PLID, OnAdminConnected);
